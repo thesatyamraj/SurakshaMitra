@@ -18,7 +18,7 @@ function statusColor(status) {
 }
 
 function photoUrl(photo) {
-  return photo?.url || '';
+  return /^https?:\/\//i.test(photo?.url || '') ? photo.url : '';
 }
 
 export default function Incidents() {
@@ -70,12 +70,14 @@ export default function Incidents() {
       </div>
 
       <div className="grid incident-grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(310px,1fr))', alignItems: 'stretch' }}>
-        {incidents.map(i => (
+        {incidents.map(i => {
+          const evidenceUrl = photoUrl(i.photos?.[0]);
+          return (
           <article key={i._id} className="card" style={{ padding: 18, display: 'grid', gridTemplateRows: '154px auto 1fr auto', gap: 12, minHeight: 360 }}>
             <div style={{ height: 154, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'grid', placeItems: 'center' }}>
-              {i.photos?.[0]?.url ? (
-                <button onClick={() => setViewer({ url: photoUrl(i.photos[0]), alt: `${label(i.type)} evidence` })} style={{ width: '100%', height: '100%', padding: 0, border: 'none', background: 'transparent' }} aria-label="Open full image">
-                  <img src={photoUrl(i.photos[0])} alt={`${label(i.type)} evidence`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              {evidenceUrl ? (
+                <button onClick={() => setViewer({ url: evidenceUrl, alt: `${label(i.type)} evidence` })} style={{ width: '100%', height: '100%', padding: 0, border: 'none', background: 'transparent' }} aria-label="Open full image">
+                  <img src={evidenceUrl} alt={`${label(i.type)} evidence`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 </button>
               ) : (
                 <span className="mono" style={{ color: 'var(--muted)', fontSize: 12, textTransform: 'uppercase' }}>No image</span>
@@ -97,7 +99,7 @@ export default function Incidents() {
               <span>{new Date(i.occurredAt || i.createdAt).toLocaleString()}</span>
             </div>
           </article>
-        ))}
+        );})}
       </div>
 
       {!loading && incidents.length === 0 && (

@@ -25,7 +25,7 @@ function makeDraft(incident) {
 }
 
 function photoUrl(photo) {
-  return photo?.url || '';
+  return /^https?:\/\//i.test(photo?.url || '') ? photo.url : '';
 }
 
 export default function Admin() {
@@ -152,6 +152,7 @@ export default function Admin() {
         <div style={{ display: 'grid', gap: 12 }}>
           {incidents.map(i => {
             const draft = drafts[i._id] || makeDraft(i);
+            const evidenceUrl = photoUrl(i.photos?.[0]);
             return (
               <div key={i._id} className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -168,9 +169,9 @@ export default function Admin() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr', gap: 14 }} className="admin-report-shell">
                   <div style={{ height: 150, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'grid', placeItems: 'center' }}>
-                    {i.photos?.[0]?.url ? (
-                      <button onClick={() => setViewer({ url: photoUrl(i.photos[0]), alt: `${label(i.type)} evidence` })} style={{ width: '100%', height: '100%', padding: 0, border: 'none', background: 'transparent' }} aria-label="Open full image">
-                        <img src={photoUrl(i.photos[0])} alt={`${label(i.type)} evidence`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {evidenceUrl ? (
+                      <button onClick={() => setViewer({ url: evidenceUrl, alt: `${label(i.type)} evidence` })} style={{ width: '100%', height: '100%', padding: 0, border: 'none', background: 'transparent' }} aria-label="Open full image">
+                        <img src={evidenceUrl} alt={`${label(i.type)} evidence`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       </button>
                     ) : (
                       <span className="mono" style={{ color: 'var(--muted)', fontSize: 12, textTransform: 'uppercase' }}>No image</span>

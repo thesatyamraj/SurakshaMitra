@@ -20,6 +20,8 @@ const { broadcastZoneAlert } = require('../utils/pushService');
 const { getIO } = require('../socket');
 
 const hasCloudinary = Boolean(process.env.CLOUDINARY_URL);
+cloudinary.config({ secure: true });
+
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (_req, file, cb) => {
@@ -58,11 +60,9 @@ function uploadPhotoToCloudinary(file) {
       {
         folder: 'surakshamitra/incidents',
         resource_type: 'image',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-        context: {
-          source: 'incident_report',
-          original_filename: file.originalname || 'incident-photo',
-        },
+        use_filename: false,
+        unique_filename: true,
+        overwrite: false,
       },
       (error, result) => {
         if (error) return reject(error);
@@ -79,8 +79,18 @@ function uploadPhotoToCloudinary(file) {
       }
     );
 
+    stream.on('error', reject);
     stream.end(file.buffer);
   });
+}
+
+function cloudinaryUploadError(error) {
+  const message = String(error?.message || '').trim();
+  if (error?.http_code === 401 || /api key|signature|credentials|Invalid cloud_name/i.test(message)) {
+    return 'Cloudinary upload failed: check CLOUDINARY_URL in Render.';
+  }
+  if (message) return `Cloudinary upload failed: ${message}`;
+  return 'Cloudinary upload failed.';
 }
 
 async function deleteCloudinaryPhotos(photos = []) {
@@ -185,6 +195,9 @@ router.post('/', authMiddleware, handlePhotoUpload, async (req, res) => {
   } catch (e) {
     if (photos.length) await deleteCloudinaryPhotos(photos);
     console.error('POST /incidents:', e);
+    if (e?.http_code || /cloudinary/i.test(e?.message || '')) {
+      return res.status(502).json({ success: false, error: cloudinaryUploadError(e) });
+    }
     res.status(e.status || 500).json({ success: false, error: e.status ? e.message : 'Failed to submit incident' });
   }
 });
