@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -17,25 +18,21 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.0",
-    "socket.io": "^4.7.5",
-    "uuid": "^9.0.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "web-push": "^3.6.7",
-    "nodemailer": "^6.9.14"
-  },
-  "optionalDependencies": {
-    "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.14",
+    "socket.io": "^4.7.5",
+    "uuid": "^9.0.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
   },
   "_install_notes": {
-    "multer": "npm i multer  \u2014 enables photo upload on incident reports",
-    "nodemailer": "npm i nodemailer  \u2014 enables email notifications (requires SMTP config in .env)",
-    "web-push": "npm i web-push  \u2014 enables Web Push browser notifications (requires VAPID keys in .env)"
+    "cloudinary": "uploads incident photos directly to Cloudinary; requires CLOUDINARY_URL",
+    "multer": "parses multipart incident photo uploads in memory",
+    "nodemailer": "npm i nodemailer  — enables email notifications (requires SMTP config in .env)",
+    "web-push": "npm i web-push  — enables Web Push browser notifications (requires VAPID keys in .env)"
   },
   "engines": {
     "node": ">=18"

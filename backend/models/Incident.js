@@ -45,10 +45,15 @@ const IncidentSchema = new mongoose.Schema({
 
   // ── Evidence ───────────────────────────────────────────────────────
   photos: [{
-    url:       { type: String },         // stored path / CDN URL
-    filename:  { type: String },
-    mimeType:  { type: String },
-    uploadedAt:{ type: Date, default: Date.now },
+    url:        { type: String },        // Cloudinary secure URL
+    publicId:   { type: String },        // Cloudinary public_id, used for deletion
+    assetId:    { type: String },
+    mimeType:   { type: String },
+    format:     { type: String },
+    bytes:      { type: Number },
+    width:      { type: Number },
+    height:     { type: Number },
+    uploadedAt: { type: Date, default: Date.now },
   }],
 
   // ── Police report linkage ──────────────────────────────────────────

@@ -18,6 +18,7 @@ You need:
 - A Render account
 - A Vercel account
 - An OpenRouteService API key for Safe Route
+- A Cloudinary account for incident photo uploads
 - A Google Gemini API key if the AI assistant is required
 - A verified Brevo sender and API key or SMTP key for SOS emails
 
@@ -44,7 +45,6 @@ Confirm that these are not staged:
 - `backend/node_modules/`
 - `frontend/node_modules/`
 - `frontend/dist/`
-- `backend/uploads/incidents/`
 
 Then commit and push:
 
@@ -124,6 +124,7 @@ JWT_REFRESH_SECRET=generate_a_different_unique_secret
 JWT_ACCESS_EXPIRES=15m
 JWT_REFRESH_EXPIRES=7d
 FRONTEND_URL=https://temporary.example.com
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
 ```
 
 Generate two different JWT secrets locally:
@@ -146,6 +147,22 @@ GEMINI_MAX_OUTPUT_TOKENS=4096
 ```
 
 Without this key, the chat endpoint uses its built-in fallback responses.
+
+### Cloudinary media storage
+
+Incident report photos are uploaded directly from the backend to Cloudinary.
+MongoDB stores the secure Cloudinary URL and public ID, and admin deletion of an
+incident also deletes the related Cloudinary images.
+
+Required in Render if users will upload report photos:
+
+```env
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+```
+
+Reports without photos can still be submitted if `CLOUDINARY_URL` is missing,
+but any report with photos will be rejected until Cloudinary is configured.
+Do not use local server storage for incident photos on Render.
 
 ### Brevo email
 
@@ -300,21 +317,6 @@ If no prompt appears:
 A previously denied permission usually prevents the browser from displaying a
 new prompt until the site permission is reset manually.
 
-## Incident Image Limitation
-
-The current backend stores incident photos in `backend/uploads/incidents` on
-the server filesystem. This works locally, but Render service filesystems are
-not suitable as permanent uploaded-file storage. Photos may disappear after a
-restart, redeploy, or instance replacement.
-
-`CLOUDINARY_URL` is present in the example environment file, but the current
-upload route does not yet send files to Cloudinary. Setting that variable alone
-does not make image storage persistent.
-
-Before treating incident photos as production data, implement object storage
-such as Cloudinary, Amazon S3, or an equivalent service, and store the resulting
-public URLs in MongoDB.
-
 ## Post-Deployment Checklist
 
 - [ ] `/api/health` reports `status: "ok"` and `db: "connected"`
@@ -323,6 +325,7 @@ public URLs in MongoDB.
 - [ ] The safety map displays seeded Bengaluru locations
 - [ ] Safe Route suggestions appear and route calculation succeeds
 - [ ] A user can submit and view an incident
+- [ ] A user can upload an incident photo and see the Cloudinary image in Incidents/Admin
 - [ ] Admin can update, moderate, and delete incidents
 - [ ] Browser location permission is requested for SOS
 - [ ] SOS email contains the public Vercel `/track/:token` URL
@@ -371,11 +374,12 @@ public URLs in MongoDB.
 - Redeploy Vercel after changing it.
 - Select both endpoints from the autocomplete suggestions.
 
-### Uploaded incident image later returns 404
+### Incident photo upload fails
 
-This is expected with the current local-disk upload implementation after a
-Render restart or redeploy. Persistent object storage must be implemented for
-production image retention.
+- Set `CLOUDINARY_URL` in Render.
+- Confirm the value uses `cloudinary://API_KEY:API_SECRET@CLOUD_NAME`.
+- Redeploy or restart the backend after changing the value.
+- Rotate the Cloudinary API secret if it was exposed in a screenshot or chat.
 
 ### First backend request is slow
 

@@ -3,7 +3,6 @@ require('dotenv').config();
 
 const express   = require('express');
 const http      = require('http');
-const path      = require('path');
 const cors      = require('cors');
 const helmet    = require('helmet');
 const morgan    = require('morgan');
@@ -33,7 +32,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rate limiting tiers (PRD §11.1)
 const globalLimiter  = rateLimit({ windowMs: 60*1000, max: 200, standardHeaders: true, message: { success:false, error:'Too many requests.' } });
@@ -61,6 +59,7 @@ app.get('/api/health', (req, res) => {
       heatmap: true, incidents: true, notifications: true,
       ai: !!process.env.GEMINI_API_KEY,
       email: !!process.env.SMTP_HOST,
+      cloudinary: !!process.env.CLOUDINARY_URL,
       sms: process.env.TWILIO_ENABLED === 'true',
       push: !!process.env.VAPID_PUBLIC_KEY,
     },

@@ -11,45 +11,87 @@
  */
 const express  = require('express');
 const router   = express.Router();
-const path     = require('path');
-const fs       = require('fs');
+const { v2: cloudinary } = require('cloudinary');
+const multer = require('multer');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const Incident = require('../models/Incident');
 const Location = require('../models/Location');
 const { broadcastZoneAlert } = require('../utils/pushService');
 const { getIO } = require('../socket');
 
-// ── Multer setup (photo upload, max 5MB, max 3 photos) ───────────────
-let upload;
-try {
-  const multer = require('multer');
-  const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'incidents');
-  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const hasCloudinary = Boolean(process.env.CLOUDINARY_URL);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) return cb(new Error('Only JPG, PNG, and WebP incident photos are allowed.'));
+    cb(null, true);
+  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 3 },
+});
 
-  const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    },
+const parseIncidentPhotos = upload.array('photos', 3);
+
+function handlePhotoUpload(req, res, next) {
+  parseIncidentPhotos(req, res, (err) => {
+    if (!err) return next();
+
+    let message = err.message || 'Invalid incident photo upload.';
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') message = 'Each incident photo must be 5MB or smaller.';
+      else if (err.code === 'LIMIT_FILE_COUNT') message = 'You can upload up to 3 incident photos.';
+    }
+
+    return res.status(400).json({ success: false, error: message });
   });
+}
 
-  const fileFilter = (_req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, allowed.includes(ext));
-  };
+function uploadPhotoToCloudinary(file) {
+  if (!hasCloudinary) {
+    const err = new Error('Cloudinary is not configured. Set CLOUDINARY_URL before uploading incident photos.');
+    err.status = 503;
+    throw err;
+  }
 
-  upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024, files: 3 } });
-} catch (_) {
-  // multer not installed — photo upload will be unavailable
-  const noop = (req, res, next) => next();
-  upload = { array: () => noop };
-  console.warn('⚠️  multer not installed — photo upload disabled. Run: npm i multer');
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'surakshamitra/incidents',
+        resource_type: 'image',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+        context: {
+          source: 'incident_report',
+          original_filename: file.originalname || 'incident-photo',
+        },
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          assetId: result.asset_id,
+          mimeType: file.mimetype,
+          format: result.format,
+          bytes: result.bytes,
+          width: result.width,
+          height: result.height,
+        });
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
+
+async function deleteCloudinaryPhotos(photos = []) {
+  const publicIds = photos.map(photo => photo.publicId).filter(Boolean);
+  if (!publicIds.length) return;
+  await Promise.allSettled(publicIds.map(publicId => cloudinary.uploader.destroy(publicId, { resource_type: 'image' })));
 }
 
 // ── POST /api/incidents ───────────────────────────────────────────────
-router.post('/', authMiddleware, upload.array('photos', 3), async (req, res) => {
+router.post('/', authMiddleware, handlePhotoUpload, async (req, res) => {
+  let photos = [];
   try {
     const {
       locationId, type, severity, description,
@@ -75,12 +117,7 @@ router.post('/', authMiddleware, upload.array('photos', 3), async (req, res) => 
     const location = await Location.findById(locationId);
     if (!location) return res.status(404).json({ success: false, error: 'Location not found' });
 
-    // Build photo array from uploaded files
-    const photos = (req.files || []).map(f => ({
-      url:      `/uploads/incidents/${f.filename}`,
-      filename: f.filename,
-      mimeType: f.mimetype,
-    }));
+    photos = await Promise.all((req.files || []).map(uploadPhotoToCloudinary));
 
     // Build geo point: prefer user-provided coords, fall back to the location's own coords
     let geo;
@@ -146,8 +183,9 @@ router.post('/', authMiddleware, upload.array('photos', 3), async (req, res) => 
       },
     });
   } catch (e) {
+    if (photos.length) await deleteCloudinaryPhotos(photos);
     console.error('POST /incidents:', e);
-    res.status(500).json({ success: false, error: 'Failed to submit incident' });
+    res.status(e.status || 500).json({ success: false, error: e.status ? e.message : 'Failed to submit incident' });
   }
 });
 
@@ -166,7 +204,7 @@ router.get('/', async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit))
-      .select('-userToken -photos.filename') // never expose user token or server paths
+      .select('-userToken')
       .lean();
 
     // Filter by city via populated location
@@ -223,11 +261,7 @@ router.delete('/:id', authMiddleware, requireRole('moderator', 'admin'), async (
     const incident = await Incident.findById(req.params.id);
     if (!incident) return res.status(404).json({ success: false, error: 'Incident not found' });
 
-    for (const photo of incident.photos || []) {
-      if (!photo.filename) continue;
-      const filePath = path.join(__dirname, '..', 'uploads', 'incidents', path.basename(photo.filename));
-      fs.promises.unlink(filePath).catch(() => {});
-    }
+    await deleteCloudinaryPhotos(incident.photos);
 
     await incident.deleteOne();
     res.json({ success: true, message: 'Incident deleted' });
@@ -247,7 +281,7 @@ router.get('/location/:locationId', async (req, res) => {
     const incidents = await Incident.find(query)
       .sort({ occurredAt: -1 })
       .limit(parseInt(limit))
-      .select('-userToken -photos.filename')
+      .select('-userToken')
       .lean();
 
     const byType = incidents.reduce((acc, i) => {
@@ -261,21 +295,12 @@ router.get('/location/:locationId', async (req, res) => {
   }
 });
 
-// ── Serve uploaded photos ─────────────────────────────────────────────
-// In production serve via CDN. This is a fallback for local dev.
-router.get('/photo/:filename', (req, res) => {
-  const filename = path.basename(req.params.filename); // prevent path traversal
-  const filePath = path.join(__dirname, '..', 'uploads', 'incidents', filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'Photo not found' });
-  res.sendFile(filePath);
-});
-
 // ── GET /api/incidents/:id ────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
     const incident = await Incident.findById(req.params.id)
       .populate('locationId', 'name area type location')
-      .select('-userToken -photos.filename')
+      .select('-userToken')
       .lean();
     if (!incident) return res.status(404).json({ success: false, error: 'Incident not found' });
     res.json({ success: true, data: incident });

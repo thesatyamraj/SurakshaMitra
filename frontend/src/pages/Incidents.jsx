@@ -5,7 +5,6 @@ import { useToast } from '../components/Toast';
 
 const TYPES = ['', 'harassment', 'stalking', 'theft', 'assault', 'unsafe_lighting', 'unsafe_crowd', 'infrastructure', 'suspicious_person', 'other'];
 const SEVERITIES = ['', 'low', 'medium', 'high', 'critical'];
-const API_ORIGIN = (import.meta.env.VITE_API_URL || '/api').replace(/\/api\/?$/, '');
 
 function label(value) {
   return value ? value.replace(/_/g, ' ') : 'All';
@@ -19,9 +18,7 @@ function statusColor(status) {
 }
 
 function photoUrl(photo) {
-  if (!photo?.url) return '';
-  if (/^https?:\/\//i.test(photo.url)) return photo.url;
-  return `${API_ORIGIN}${photo.url}`;
+  return photo?.url || '';
 }
 
 export default function Incidents() {

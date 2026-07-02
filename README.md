@@ -37,7 +37,7 @@ The idea is simple: **know before you go, and get help fast when you need it.**
 
 - **Incident Reports**
   - Anonymous incident reports.
-  - Optional image upload.
+  - Optional image upload stored in Cloudinary.
   - Public incident listing with fixed-size image cards.
   - Admin can update, verify, escalate, reject, or delete reports.
 
@@ -61,6 +61,7 @@ The idea is simple: **know before you go, and get help fast when you need it.**
 | Auth | JWT access/refresh tokens, bcryptjs |
 | AI | Google Gemini API |
 | Email | Brevo API or Brevo SMTP through Nodemailer |
+| Media Storage | Cloudinary |
 | Routing | OpenRouteService |
 | Deployment | Vercel frontend, Render backend |
 
@@ -138,6 +139,7 @@ Install these before setup:
 - npm
 - MongoDB Atlas account
 - OpenRouteService API key
+- Cloudinary account for incident photo uploads
 - Google Gemini API key, optional but recommended
 - Brevo API key or SMTP key, optional for SOS emails
 - Vercel account for frontend deployment
@@ -211,6 +213,16 @@ SMTP_USER=your_brevo_smtp_login
 SMTP_PASS=your_brevo_smtp_key
 SMTP_FROM=SurakshaMitra <your_verified_brevo_sender@example.com>
 ```
+
+Cloudinary media storage:
+
+```env
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+```
+
+Incident reports without photos still work if `CLOUDINARY_URL` is empty, but
+photo uploads require Cloudinary. The backend does not save uploaded incident
+photos on local disk.
 
 For deployment, `FRONTEND_URL` must be your Vercel URL:
 
@@ -358,6 +370,7 @@ High-level steps:
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
    - `FRONTEND_URL=https://your-vercel-app.vercel.app`
+   - `CLOUDINARY_URL`
    - optional keys like `GEMINI_API_KEY`, `BREVO_API_KEY`
 5. Set Vercel environment variables:
    - `VITE_API_URL=https://your-render-api.onrender.com/api`
@@ -369,7 +382,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 ## Publish to GitHub
 
 The repository's `.gitignore` excludes environment files, API keys, dependencies,
-generated uploads, build output, logs, and local editor files.
+build output, logs, and local editor files.
 
 From the VS Code terminal:
 
@@ -381,8 +394,8 @@ git add .
 git status
 ```
 
-Before committing, confirm that `.env`, `frontend/.env`, `node_modules/`,
-`frontend/dist/`, and `backend/uploads/incidents/` do not appear in `git status`.
+Before committing, confirm that `.env`, `frontend/.env`, `node_modules/`, and
+`frontend/dist/` do not appear in `git status`.
 Then create the first commit and push it:
 
 ```bash

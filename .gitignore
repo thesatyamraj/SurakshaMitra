@@ -22,11 +22,6 @@ frontend/build/
 backend/dist/
 backend/build/
 
-# Runtime uploads and generated media
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/uploads/incidents/*
-
 # Logs
 logs/
 *.log
