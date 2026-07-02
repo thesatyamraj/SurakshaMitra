@@ -1,61 +1,384 @@
-# 🚀 Deployment — Render (backend) + Vercel (frontend)
+# Deploy SurakshaMitra
 
-Both free. Total cost ₹0. Do them in this order.
+This guide deploys:
 
-## 1. Push to GitHub
+- MongoDB on MongoDB Atlas
+- The Express and Socket.io backend on Render
+- The React/Vite frontend on Vercel
+
+Deploy the backend first, then the frontend, and finally update the backend with
+the public frontend URL.
+
+## Before You Deploy
+
+You need:
+
+- A GitHub repository containing this project
+- A MongoDB Atlas database
+- A Render account
+- A Vercel account
+- An OpenRouteService API key for Safe Route
+- A Google Gemini API key if the AI assistant is required
+- A verified Brevo sender and API key or SMTP key for SOS emails
+
+Never commit `.env` or `frontend/.env`. The included `.gitignore` excludes both.
+Rotate any credential that has previously appeared in a screenshot, terminal
+log, commit, or shared message.
+
+## 1. Push the Project to GitHub
+
+Run these commands from the VS Code terminal:
+
 ```bash
-cd SurakshaMitra-Unified
-git init && git add . && git commit -m "SurakshaMitra Unified"
+cd /Users/satyam/Downloads/SurakshaMitra-Unified
+git init
 git branch -M main
-git remote add origin https://github.com/amanshekhar0/surakshamitra-unified.git
+git add .
+git status
+```
+
+Confirm that these are not staged:
+
+- `.env`
+- `frontend/.env`
+- `backend/node_modules/`
+- `frontend/node_modules/`
+- `frontend/dist/`
+- `backend/uploads/incidents/`
+
+Then commit and push:
+
+```bash
+git commit -m "Initial commit: SurakshaMitra"
+git remote add origin https://github.com/thesatyamraj/SurakshaMitra.git
 git push -u origin main
 ```
-`.gitignore` already excludes `.env` and `node_modules`, so no secrets leave your machine.
 
-## 2. Database — MongoDB Atlas
-Use the same M0 cluster from setup. In **Network Access**, make sure `0.0.0.0/0` is allowed (Render's IPs are dynamic).
+If `origin` already exists:
 
-## 3. Backend → Render
-1. Go to **https://render.com** → sign in with GitHub → **New → Web Service** → pick your repo.
-2. Settings:
-   - **Root Directory:** `backend`
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-   - **Instance Type:** Free
-   - **Health Check Path:** `/api/health`
-3. **Environment variables** (Advanced → Add): `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL` (fill after step 4), plus any optional keys (`GEMINI_API_KEY`, etc.).
-4. Deploy. Your API will be at `https://surakshamitra-api.onrender.com`. Test `…/api/health`.
-   > Free Render web services **spin down after ~15 min idle** — the first request after that takes ~30–50s to wake. Normal for a demo; mention it if asked.
-
-*(The included `render.yaml` blueprint can also auto-configure this — use **New → Blueprint** and point it at the repo.)*
-
-## 4. Frontend → Vercel
-1. Go to **https://vercel.com** → **Add New → Project** → import the repo.
-2. Settings:
-   - **Root Directory:** `frontend`
-   - **Framework Preset:** Vite (auto-detected)
-   - **Build Command:** `npm run build` · **Output:** `dist`
-3. **Environment Variables:**
-   - `VITE_API_URL=https://surakshamitra-api.onrender.com/api`
-   - `VITE_SOCKET_URL=https://surakshamitra-api.onrender.com`
-   - `VITE_MAP_CENTER_LAT=12.9716`, `VITE_MAP_CENTER_LNG=77.5946`
-   - `VITE_ORS_API_KEY=…` (optional)
-4. Deploy → you get `https://your-app.vercel.app`.
-
-## 5. Close the loop
-Back in **Render**, set `FRONTEND_URL=https://your-app.vercel.app` and redeploy so CORS, WebSockets, and SOS email tracking links use the public Vercel URL instead of localhost.
-
-## 6. Seed production (once)
-From your Mac, temporarily point root `.env`'s `MONGODB_URI` at the Atlas cluster and run:
 ```bash
-cd backend && npm run seed
+git remote set-url origin https://github.com/thesatyamraj/SurakshaMitra.git
+git push -u origin main
 ```
-Then set it back for local dev.
 
-## Post-deploy checklist
-- [ ] `https://…onrender.com/api/health` returns `{ status: "ok" }`
-- [ ] Vercel site loads and the map fills with places
-- [ ] Sign up / sign in works (silent token refresh)
-- [ ] SOS trigger → open the `/track/<token>` link on a second device and watch the dot move
-- [ ] Submitting a rating updates the map live (WebSocket)
-- [ ] Admin login reaches the dashboard; non-admins are rejected at the API
+GitHub may open a browser authentication window. GitHub account passwords are
+not accepted for command-line Git authentication; use browser sign-in or a
+personal access token.
+
+## 2. Configure MongoDB Atlas
+
+1. Create a project and an Atlas cluster.
+2. Open **Database Access** and create a database user.
+3. Open **Network Access** and allow the backend to connect.
+4. Copy the Node.js connection string.
+5. Replace the username, password, and cluster host.
+6. Use `surakshamitra` as the database name.
+
+Example:
+
+```text
+mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/surakshamitra?retryWrites=true&w=majority
+```
+
+URL-encode special characters in the database password. For example, `@`
+becomes `%40`.
+
+Render outbound addresses may vary depending on the selected service plan. For
+a demo, Atlas Network Access can temporarily allow `0.0.0.0/0`; use a more
+restricted network configuration for a production system.
+
+## 3. Deploy the Backend to Render
+
+### Option A: Render dashboard
+
+1. In Render, select **New > Web Service**.
+2. Connect `thesatyamraj/SurakshaMitra`.
+3. Configure:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Runtime | Node |
+| Build Command | `npm install` |
+| Start Command | `npm start` |
+| Health Check Path | `/api/health` |
+
+Render supplies `PORT`; do not hard-code a production port.
+
+### Option B: Render Blueprint
+
+The root [render.yaml](./render.yaml) contains the base backend configuration.
+In Render, select **New > Blueprint**, connect the repository, and provide the
+environment values marked as not synchronized.
+
+The Blueprint only contains the core variables. Add optional email, AI, SMS,
+and push variables manually in the Render dashboard.
+
+### Required Render environment variables
+
+```env
+NODE_ENV=production
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=generate_a_unique_secret
+JWT_REFRESH_SECRET=generate_a_different_unique_secret
+JWT_ACCESS_EXPIRES=15m
+JWT_REFRESH_EXPIRES=7d
+FRONTEND_URL=https://temporary.example.com
+```
+
+Generate two different JWT secrets locally:
+
+```bash
+openssl rand -hex 32
+openssl rand -hex 32
+```
+
+Do not reuse the access-token secret as the refresh-token secret.
+
+`FRONTEND_URL` is temporary at this stage. Replace it with the Vercel URL after
+deploying the frontend.
+
+### Gemini AI
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MAX_OUTPUT_TOKENS=4096
+```
+
+Without this key, the chat endpoint uses its built-in fallback responses.
+
+### Brevo email
+
+The Brevo API is the preferred production option:
+
+```env
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM=SurakshaMitra <your-verified-sender@example.com>
+```
+
+Alternatively, configure Brevo SMTP:
+
+```env
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_brevo_smtp_login
+SMTP_PASS=your_brevo_smtp_key
+SMTP_FROM=SurakshaMitra <your-verified-sender@example.com>
+```
+
+If `BREVO_API_KEY` is set, SOS email uses the API. Otherwise, it falls back to
+SMTP. The sender address must be verified in Brevo.
+
+### Optional SMS and web push
+
+```env
+TWILIO_ENABLED=false
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_PHONE_NUMBER=
+
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+```
+
+Deploy the service and copy its public URL, for example:
+
+```text
+https://surakshamitra-api.onrender.com
+```
+
+Verify:
+
+```text
+https://surakshamitra-api.onrender.com/api/health
+```
+
+The response should report `status: "ok"` and `db: "connected"`.
+
+## 4. Seed the Production Database
+
+The seed script creates Bengaluru locations, ratings, trust data, safe zones,
+and the admin account.
+
+Important: `npm run seed` deletes all existing Bengaluru locations and all
+ratings and trust records before rebuilding them. Run it only for initial setup
+or when you intentionally want to replace that data.
+
+Set the production Atlas URI in the root `.env`, set strong seed credentials,
+and run:
+
+```bash
+cd /Users/satyam/Downloads/SurakshaMitra-Unified/backend
+npm run seed
+```
+
+Relevant root `.env` values:
+
+```env
+MONGODB_URI=mongodb+srv://...
+SEED_ADMIN_EMAIL=your-admin@example.com
+SEED_ADMIN_PASSWORD=use-a-strong-unique-password
+```
+
+Do not use the demo admin password in production.
+
+## 5. Deploy the Frontend to Vercel
+
+1. In Vercel, select **Add New > Project**.
+2. Import `thesatyamraj/SurakshaMitra`.
+3. Set **Root Directory** to `frontend`.
+4. Vercel should detect Vite automatically.
+5. Confirm:
+
+| Setting | Value |
+|---|---|
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+
+Add these Vercel environment variables:
+
+```env
+VITE_API_URL=https://surakshamitra-api.onrender.com/api
+VITE_SOCKET_URL=https://surakshamitra-api.onrender.com
+VITE_MAP_CENTER_LAT=12.9716
+VITE_MAP_CENTER_LNG=77.5946
+VITE_ORS_API_KEY=your_openrouteservice_key
+```
+
+Do not add a trailing slash to `VITE_API_URL` or `VITE_SOCKET_URL`.
+
+Deploy and copy the production URL, for example:
+
+```text
+https://suraksha-mitra.vercel.app
+```
+
+The included `frontend/vercel.json` provides the SPA rewrite required for
+routes such as `/login`, `/incidents`, and `/track/:token`.
+
+## 6. Connect Vercel and Render
+
+Return to the Render service and replace `FRONTEND_URL`:
+
+```env
+FRONTEND_URL=https://suraksha-mitra.vercel.app
+```
+
+Save the environment and redeploy or restart the backend.
+
+This value controls:
+
+- Express CORS
+- Socket.io CORS
+- Public SOS tracking links
+- Links in notification emails
+
+For multiple allowed frontends, use a comma-separated value:
+
+```env
+FRONTEND_URL=https://suraksha-mitra.vercel.app,https://preview.example.com
+```
+
+Use the production Vercel URL first because SOS emails use the first URL when
+building tracking links.
+
+## Browser Location Permission
+
+Browser geolocation works only in secure contexts. The deployed frontend must
+use HTTPS, which Vercel provides. The browser should request location access
+when the user starts SOS or another feature that needs the current position.
+
+If no prompt appears:
+
+1. Open the browser's site settings.
+2. Reset or allow the Location permission.
+3. Reload the page.
+4. Make sure the site is using HTTPS.
+
+A previously denied permission usually prevents the browser from displaying a
+new prompt until the site permission is reset manually.
+
+## Incident Image Limitation
+
+The current backend stores incident photos in `backend/uploads/incidents` on
+the server filesystem. This works locally, but Render service filesystems are
+not suitable as permanent uploaded-file storage. Photos may disappear after a
+restart, redeploy, or instance replacement.
+
+`CLOUDINARY_URL` is present in the example environment file, but the current
+upload route does not yet send files to Cloudinary. Setting that variable alone
+does not make image storage persistent.
+
+Before treating incident photos as production data, implement object storage
+such as Cloudinary, Amazon S3, or an equivalent service, and store the resulting
+public URLs in MongoDB.
+
+## Post-Deployment Checklist
+
+- [ ] `/api/health` reports `status: "ok"` and `db: "connected"`
+- [ ] The Vercel site loads directly on nested routes
+- [ ] Signup, login, logout, and token refresh work
+- [ ] The safety map displays seeded Bengaluru locations
+- [ ] Safe Route suggestions appear and route calculation succeeds
+- [ ] A user can submit and view an incident
+- [ ] Admin can update, moderate, and delete incidents
+- [ ] Browser location permission is requested for SOS
+- [ ] SOS email contains the public Vercel `/track/:token` URL
+- [ ] Live tracking updates on a second device
+- [ ] Realtime map and notification events connect through Socket.io
+- [ ] Gemini returns a complete response when its key is configured
+
+## Troubleshooting
+
+### Backend cannot connect to MongoDB
+
+- Verify `MONGODB_URI`.
+- URL-encode special characters in the password.
+- Check Atlas Database Access and Network Access.
+- Confirm `/api/health` reports `db: "connected"`.
+
+### Browser reports a CORS error
+
+- Set Render `FRONTEND_URL` to the exact Vercel origin.
+- Do not include a path such as `/api`.
+- Remove a trailing slash.
+- Restart the Render service after changing the value.
+
+### Frontend requests localhost after deployment
+
+- Set `VITE_API_URL` and `VITE_SOCKET_URL` in Vercel.
+- Redeploy the frontend because Vite embeds these values at build time.
+
+### SOS email contains localhost
+
+- Set Render `FRONTEND_URL` to the production Vercel URL.
+- Restart the backend.
+- Trigger a new SOS; previously sent emails cannot be changed.
+
+### SOS email is not delivered
+
+- Verify the emergency-contact email stored in the user's profile.
+- Confirm the Brevo sender address is verified.
+- Check the Render logs for `[Email]` messages.
+- Verify either the Brevo API variables or all SMTP variables.
+- Check Brevo's transactional logs and spam folder.
+
+### Safe Route does not calculate
+
+- Set `VITE_ORS_API_KEY` in Vercel.
+- Redeploy Vercel after changing it.
+- Select both endpoints from the autocomplete suggestions.
+
+### Uploaded incident image later returns 404
+
+This is expected with the current local-disk upload implementation after a
+Render restart or redeploy. Persistent object storage must be implemented for
+production image retention.
+
+### First backend request is slow
+
+Some Render service plans may suspend an idle service. Check the current Render
+plan behavior and service logs. The frontend should handle a delayed first API
+response gracefully.
