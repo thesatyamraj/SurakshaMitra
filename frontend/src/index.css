@@ -1,0 +1,101 @@
+/* ============================================================
+   SurakshaMitra — "Beacon after dusk" design system
+   Dark = default (night-safety product). Light = cool off-white.
+   ============================================================ */
+:root {
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+
+  --safe: #34D399;   --moderate: #FBBF24;  --risky: #FB7185;  --unrated: #6B7194;
+  --sos: #FF3B3B;    --sos-glow: rgba(255,59,59,.45);
+
+  --r-sm: 10px; --r-md: 16px; --r-lg: 24px;
+  --shadow: 0 10px 40px -12px rgba(0,0,0,.5);
+  --maxw: 1200px;
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+/* Dark (default) */
+:root, [data-theme="dark"] {
+  --bg: #0E1020;      --bg-grad: radial-gradient(1200px 700px at 70% -10%, #1b1740 0%, transparent 55%), radial-gradient(900px 600px at -10% 20%, #241539 0%, transparent 50%), #0E1020;
+  --surface: #171A2E; --surface-2: #1F2440; --border: #2A2F4E;
+  --text: #EAE9F2;    --muted: #9A9BB5;
+  --primary: #8B7BFF; --primary-2: #A78BFA; --accent: #FF6B9D;
+  --on-primary: #0E1020;
+  --ring-track: #262B49;
+}
+/* Light */
+[data-theme="light"] {
+  --bg: #F5F6FB;      --bg-grad: radial-gradient(1100px 600px at 80% -10%, #ece9ff 0%, transparent 55%), radial-gradient(800px 500px at -5% 10%, #ffe9f2 0%, transparent 55%), #F5F6FB;
+  --surface: #FFFFFF; --surface-2: #EEF0F8; --border: #E1E4F0;
+  --text: #16182B;    --muted: #5A5E7A;
+  --primary: #6D5AF0; --primary-2: #8B7BFF; --accent: #E8437E;
+  --on-primary: #FFFFFF;
+  --ring-track: #E6E8F5;
+  --shadow: 0 12px 40px -16px rgba(60,50,120,.35);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; font-family: var(--font-body); color: var(--text);
+  background: var(--bg-grad); background-attachment: fixed; min-height: 100vh;
+  -webkit-font-smoothing: antialiased; line-height: 1.55;
+  transition: background-color .4s var(--ease), color .3s var(--ease);
+}
+h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.1; letter-spacing: -.02em; margin: 0; }
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--font-body); cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.mono { font-family: var(--font-mono); }
+.container { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent;
+  padding: 11px 20px; border-radius: var(--r-sm); font-weight: 600; font-size: 15px;
+  transition: transform .15s var(--ease), background .2s, box-shadow .2s; }
+.btn:active { transform: translateY(1px) scale(.99); }
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; box-shadow: 0 8px 24px -10px var(--primary); }
+.btn-primary:hover { box-shadow: 0 12px 30px -8px var(--primary); }
+.btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-lg { padding: 15px 30px; font-size: 17px; border-radius: var(--r-md); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+
+/* Category text/chips */
+.chip { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px; }
+.chip.safe { color: var(--safe); background: color-mix(in srgb, var(--safe) 15%, transparent); }
+.chip.moderate { color: var(--moderate); background: color-mix(in srgb, var(--moderate) 16%, transparent); }
+.chip.risky { color: var(--risky); background: color-mix(in srgb, var(--risky) 16%, transparent); }
+.chip.unrated { color: var(--muted); background: var(--surface-2); }
+
+/* Inputs */
+input, select, textarea { width: 100%; padding: 11px 14px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-family: var(--font-body); font-size: 15px; }
+input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; }
+label { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+/* Utility */
+.grid { display: grid; gap: 20px; }
+.flex { display: flex; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes pulseRing { 0%{transform:scale(.95);opacity:.7} 70%{transform:scale(1.35);opacity:0} 100%{opacity:0} }
+@keyframes riseIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+.rise { animation: riseIn .6s var(--ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+
+/* Leaflet dark tuning */
+.leaflet-container { background: var(--surface-2); font-family: var(--font-body); }
+[data-theme="dark"] .leaflet-tile { filter: brightness(.75) contrast(1.05) hue-rotate(180deg) invert(1); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--text); }
