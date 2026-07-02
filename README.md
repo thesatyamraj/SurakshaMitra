@@ -228,6 +228,11 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
+If you create a custom Cloudinary API key, assign it an upload-capable role.
+For this project, the simplest working option is **Master Admin** for the
+Cloudinary product environment. A limited Media Library role can return `403`
+when the backend tries to upload report photos.
+
 Incident reports without photos still work if `CLOUDINARY_URL` is empty, but
 photo uploads require Cloudinary. The backend does not save uploaded incident
 photos on local disk.

@@ -168,6 +168,11 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
+Cloudinary custom keys must have permission to upload assets. In Cloudinary
+**Settings > API Keys**, assign the key an upload-capable role. For this app,
+**Master Admin** is the simplest working role. If the key has only Media
+Library access, incident image uploads can fail with a `403`.
+
 Reports without photos can still be submitted if `CLOUDINARY_URL` is missing,
 but any report with photos will be rejected until Cloudinary is configured.
 Do not use local server storage for incident photos on Render.
@@ -386,7 +391,7 @@ new prompt until the site permission is reset manually.
 
 - Set `CLOUDINARY_URL` in Render.
 - Confirm the value uses `cloudinary://API_KEY:API_SECRET@CLOUD_NAME`.
-- If uploads return 403, use a full-access Cloudinary API key or enable upload permission for the key.
+- If uploads return `403`, assign the Cloudinary API key the **Master Admin** role or another role with upload permission.
 - Redeploy or restart the backend after changing the value.
 - Rotate the Cloudinary API secret if it was exposed in a screenshot or chat.
 
