@@ -220,6 +220,14 @@ Cloudinary media storage:
 CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
 ```
 
+Or configure the same credentials separately:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
 Incident reports without photos still work if `CLOUDINARY_URL` is empty, but
 photo uploads require Cloudinary. The backend does not save uploaded incident
 photos on local disk.

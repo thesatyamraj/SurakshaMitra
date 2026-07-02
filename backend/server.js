@@ -59,7 +59,10 @@ app.get('/api/health', (req, res) => {
       heatmap: true, incidents: true, notifications: true,
       ai: !!process.env.GEMINI_API_KEY,
       email: !!process.env.SMTP_HOST,
-      cloudinary: !!process.env.CLOUDINARY_URL,
+      cloudinary: !!(
+        process.env.CLOUDINARY_URL ||
+        (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
+      ),
       sms: process.env.TWILIO_ENABLED === 'true',
       push: !!process.env.VAPID_PUBLIC_KEY,
     },

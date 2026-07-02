@@ -19,8 +19,18 @@ const Location = require('../models/Location');
 const { broadcastZoneAlert } = require('../utils/pushService');
 const { getIO } = require('../socket');
 
-const hasCloudinary = Boolean(process.env.CLOUDINARY_URL);
-cloudinary.config({ secure: true });
+const cloudinaryConfig = {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+};
+cloudinary.config(cloudinaryConfig);
+
+const hasCloudinary = Boolean(
+  process.env.CLOUDINARY_URL ||
+  (cloudinaryConfig.cloud_name && cloudinaryConfig.api_key && cloudinaryConfig.api_secret)
+);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -50,7 +60,7 @@ function handlePhotoUpload(req, res, next) {
 
 function uploadPhotoToCloudinary(file) {
   if (!hasCloudinary) {
-    const err = new Error('Cloudinary is not configured. Set CLOUDINARY_URL before uploading incident photos.');
+    const err = new Error('Cloudinary is not configured. Set CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET before uploading incident photos.');
     err.status = 503;
     throw err;
   }
@@ -87,7 +97,10 @@ function uploadPhotoToCloudinary(file) {
 function cloudinaryUploadError(error) {
   const message = String(error?.message || '').trim();
   if (error?.http_code === 401 || /api key|signature|credentials|Invalid cloud_name/i.test(message)) {
-    return 'Cloudinary upload failed: check CLOUDINARY_URL in Render.';
+    return 'Cloudinary upload failed: check Cloudinary credentials in Render.';
+  }
+  if (error?.http_code === 403) {
+    return 'Cloudinary upload failed: this API key is not allowed to upload. Use a full-access Cloudinary API key or enable upload permission.';
   }
   if (message) return `Cloudinary upload failed: ${message}`;
   return 'Cloudinary upload failed.';
